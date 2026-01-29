@@ -11,9 +11,12 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:contracts": "hardhat test",
+    "test:coverage": "hardhat coverage",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network base-sepolia",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network base",
-    "verify": "hardhat verify"
+    "verify": "hardhat verify",
+    "security:audit": "ts-node scripts/security/solodit-audit.ts",
+    "security:check": "echo 'Running security checks...' && npm run test && npm run security:audit"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "latest",
