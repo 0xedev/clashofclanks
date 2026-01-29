@@ -1,10 +1,12 @@
 # Clash of Clanks ($COC) 🎮⚔️
 
-**A Farcaster-native prediction market game where Clanker tokens battle for supremacy**
+**A Farcaster Mini App for prediction markets where Clanker tokens battle for supremacy**
 
 ## 🎯 Overview
 
-Clash of Clanks is a gamified prediction market platform built on Farcaster where users bet on which newly deployed Clanker tokens will perform better across key metrics (market cap, volume, holder count, price appreciation). Winners take the pot, and platform revenue flows to stakers.
+Clash of Clanks is a gamified prediction market **Farcaster Mini App** built on Base where users bet on which newly deployed Clanker tokens will perform better across key metrics (market cap, volume, holder count, price appreciation). Winners take the pot, and platform revenue flows to stakers.
+
+> **🎮 Native Farcaster Experience**: Built as a Mini App with seamless authentication, integrated wallet, and mobile notifications
 
 ## ✨ Key Features
 
@@ -57,13 +59,14 @@ Clash of Clanks is a gamified prediction market platform built on Farcaster wher
 
 ## 🏗️ Technical Stack
 
-- **Platform**: Farcaster Frame/Mini-app
-- **Blockchain**: Base (native to Farcaster ecosystem)
-- **Oracle**: Automated on-chain oracle (Chainlink or similar)
-- **Smart Contracts**: Solidity
-- **Frontend**: Next.js/React with Farcaster SDK
-- **Token Standard**: ERC-20 ($COC)
-- **NFT Standard**: ERC-721 (existing @clinkers NFT)
+- **Platform**: Farcaster Mini App (native integration)
+- **Blockchain**: Base (Farcaster's native L2)
+- **Smart Contracts**: Solidity with Hardhat
+- **Frontend**: Next.js 14 + React
+- **Mini App SDK**: @farcaster/miniapp-sdk
+- **Styling**: Tailwind CSS
+- **Wallet**: Integrated Farcaster wallet
+- **Oracle**: Chainlink (automated metrics)
 
 ## 🎮 User Flow
 
@@ -102,7 +105,7 @@ clash-of-clanks/
 - [ ] Basic battle creation
 
 ### Phase 2: Farcaster Integration
-- [ ] Frame development
+- [ ] Mini App development
 - [ ] NFT verification system
 - [ ] Betting interface
 - [ ] Leverage system
@@ -144,11 +147,13 @@ clash-of-clanks/
 
 ## 🚀 Getting Started
 
+### Quick Start
+
 ```bash
 # Install dependencies
 npm install
 
-# Set up environment variables
+# Copy environment variables
 cp .env.example .env
 
 # Run development server
@@ -157,6 +162,22 @@ npm run dev
 # Deploy contracts (testnet)
 npm run deploy:testnet
 ```
+
+### Mini App Setup
+
+1. **Enable Developer Mode** on Farcaster:
+   - Visit: https://farcaster.xyz/~/settings/developer-tools
+   - Toggle "Developer Mode"
+
+2. **Review Mini App Documentation**:
+   - See `docs/MINIAPP_SETUP.md` for detailed setup
+   - Configure `public/manifest.json` with your details
+
+3. **Test Locally**:
+   - Use ngrok or similar for local testing in Farcaster
+   - Access via Farcaster client for full features
+
+For detailed instructions, see [QUICKSTART.md](./QUICKSTART.md) and [MINIAPP_SETUP.md](./docs/MINIAPP_SETUP.md)
 
 ## 📝 License
 

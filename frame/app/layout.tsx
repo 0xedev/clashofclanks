@@ -9,13 +9,6 @@ export const metadata: Metadata = {
     description: 'Bet on Clanker token battles with leverage',
     images: ['/og-image.png'],
   },
-  other: {
-    'fc:frame': 'vNext',
-    'fc:frame:image': `${process.env.NEXT_PUBLIC_URL}/og-image.png`,
-    'fc:frame:button:1': 'View Battles',
-    'fc:frame:button:2': 'My Bets',
-    'fc:frame:button:3': 'Stake',
-  },
 }
 
 export default function RootLayout({

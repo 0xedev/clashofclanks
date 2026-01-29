@@ -1,0 +1,26 @@
+{
+  "name": "Clash of Clanks",
+  "shortName": "COC",
+  "description": "Bet on Clanker token battles with leverage. Winner takes the pot!",
+  "version": "0.1.0",
+  "iconUrl": "https://your-domain.com/icon-192.png",
+  "splashImageUrl": "https://your-domain.com/splash.png",
+  "splashBackgroundColor": "#1a0b2e",
+  "homeUrl": "https://your-domain.com",
+  "manifestUrl": "https://your-domain.com/manifest.json",
+  "developer": {
+    "name": "Clash of Clanks Team",
+    "url": "https://your-domain.com",
+    "fid": 0
+  },
+  "permissions": [
+    "auth",
+    "wallet",
+    "notifications"
+  ],
+  "categories": [
+    "games",
+    "defi",
+    "social"
+  ]
+}
