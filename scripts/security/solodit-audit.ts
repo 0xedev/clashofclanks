@@ -99,7 +99,8 @@ async function findRelevantVulnerabilities() {
       // Respect rate limits
       await new Promise((resolve) => setTimeout(resolve, 3500));
     } catch (error) {
-      console.error(`   Error: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`   Error: ${errorMessage}`);
     }
   }
 
@@ -179,13 +180,12 @@ async function generateSecurityReport() {
 }
 
 // Run if called directly
-if (require.main === module) {
-  generateSecurityReport()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('Error:', error);
-      process.exit(1);
-    });
-}
+generateSecurityReport()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error running security audit:', errorMessage);
+    process.exit(1);
+  });
 
 export { searchFindings, findRelevantVulnerabilities, generateSecurityReport };
