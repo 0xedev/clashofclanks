@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-chai-matchers";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -58,6 +59,10 @@ const config: HardhatUserConfig = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
+  },
+  typechain: {
+    outDir: "typechain-types",
+    target: "ethers-v6",
   },
 };
 
