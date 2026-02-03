@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+interface ITokenMetricsOracle {
+    function hasValidMetrics(address token) external view returns (bool);
+    function compareTokens(address token1, address token2) external view returns (address winner, uint256 score1, uint256 score2);
+    function getMetricsTimestamp(address token) external view returns (uint256);
+}
+
 /**
  * @title BattleManager
  * @notice Manages Clanker token battles and matchmaking
@@ -27,11 +33,13 @@ contract BattleManager is Ownable, ReentrancyGuard {
         Meme,
         Banker
     }
-    
-    /// @notice Battle checkpoint for predictions
-    struct Checkpoint {
-        uint256 timestamp;
-        string description; // e.g., "1 hour", "Day 1", "Day 2"
+
+    /// @notice Access modes for betting
+    enum AccessMode {
+        Free,
+        NFT,
+        COC,
+        NFT_OR_COC
     }
     
     /// @notice Battle struct
@@ -56,9 +64,6 @@ contract BattleManager is Ownable, ReentrancyGuard {
     /// @notice Mapping of battle ID to Battle
     mapping(uint256 => Battle) public battles;
     
-    /// @notice Mapping of battle ID to checkpoints
-    mapping(uint256 => Checkpoint[]) public battleCheckpoints;
-    
     /// @notice Active battles
     uint256[] public activeBattles;
     
@@ -71,11 +76,17 @@ contract BattleManager is Ownable, ReentrancyGuard {
     /// @notice Minimum COC holdings required (if no NFT)
     uint256 public minCOCHolding = 10_000_000 * 10**18;
     
+    /// @notice Current access mode
+    AccessMode public accessMode = AccessMode.NFT_OR_COC;
+    
     /// @notice Oracle address (authorized to report results)
     address public oracle;
     
     /// @notice Betting pool contract
     address public bettingPool;
+
+    /// @notice Grace period after end time before cancellation
+    uint256 public gracePeriod = 6 hours;
     
     /// Events
     event BattleCreated(
@@ -92,9 +103,10 @@ contract BattleManager is Ownable, ReentrancyGuard {
     event BattleStarted(uint256 indexed battleId, uint256 timestamp);
     event BattleCompleted(uint256 indexed battleId, address winner);
     event BattleCancelled(uint256 indexed battleId);
-    event CheckpointAdded(uint256 indexed battleId, uint256 timestamp, string description);
     event OracleUpdated(address indexed newOracle);
     event BettingPoolUpdated(address indexed newBettingPool);
+    event AccessModeUpdated(AccessMode newMode);
+    event MinCOCHoldingUpdated(uint256 newMinCOCHolding);
     
     /**
      * @notice Constructor
@@ -145,9 +157,6 @@ contract BattleManager is Ownable, ReentrancyGuard {
         
         activeBattles.push(battleId);
         
-        // Create default checkpoints
-        _createDefaultCheckpoints(battleId, startTime, endTime);
-        
         emit BattleCreated(
             battleId,
             _token1,
@@ -165,32 +174,54 @@ contract BattleManager is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @notice Complete a battle and set winner
-     * @dev Only callable by oracle
+     * @notice Complete a battle and set winner based on oracle metrics
+     * @dev Only callable by oracle (TokenMetricsOracle)
      */
-    function completeBattle(uint256 _battleId, address _winner) external {
+    function completeBattle(uint256 _battleId) external {
         require(msg.sender == oracle, "Not oracle");
         Battle storage battle = battles[_battleId];
         require(battle.status == BattleStatus.Active, "Not active");
-        require(
-            _winner == battle.token1 || _winner == battle.token2,
-            "Invalid winner"
-        );
-        
+        require(block.timestamp >= battle.endTime, "Battle not ended");
+
+        ITokenMetricsOracle metricsOracle = ITokenMetricsOracle(oracle);
+
+        require(metricsOracle.hasValidMetrics(battle.token1), "Token1 metrics invalid");
+        require(metricsOracle.hasValidMetrics(battle.token2), "Token2 metrics invalid");
+
+        uint256 t1 = metricsOracle.getMetricsTimestamp(battle.token1);
+        uint256 t2 = metricsOracle.getMetricsTimestamp(battle.token2);
+        require(t1 >= battle.endTime && t2 >= battle.endTime, "Metrics before battle end");
+
+        (address winner,,) = metricsOracle.compareTokens(battle.token1, battle.token2);
+
         battle.status = BattleStatus.Completed;
-        battle.winner = _winner;
+        battle.winner = winner;
         
         _removeFromActiveBattles(_battleId);
         
-        emit BattleCompleted(_battleId, _winner);
+        emit BattleCompleted(_battleId, winner);
     }
     
     /**
-     * @notice Check if user has access (NFT holder or min COC holder)
+     * @notice Check if user has access based on current access mode
      */
     function hasAccess(address _user) public view returns (bool) {
-        return clinkersNFT.balanceOf(_user) > 0 || 
-               cocToken.balanceOf(_user) >= minCOCHolding;
+        if (accessMode == AccessMode.Free) {
+            return true;
+        }
+        
+        bool hasNFT = clinkersNFT.balanceOf(_user) > 0;
+        bool hasCOC = cocToken.balanceOf(_user) >= minCOCHolding;
+        
+        if (accessMode == AccessMode.NFT) {
+            return hasNFT;
+        }
+        
+        if (accessMode == AccessMode.COC) {
+            return hasCOC;
+        }
+        
+        return hasNFT || hasCOC;
     }
     
     /**
@@ -208,68 +239,57 @@ contract BattleManager is Ownable, ReentrancyGuard {
         bettingPool = _bettingPool;
         emit BettingPoolUpdated(_bettingPool);
     }
+
+    /**
+     * @notice Update access mode
+     */
+    function setAccessMode(AccessMode _mode) external onlyOwner {
+        accessMode = _mode;
+        emit AccessModeUpdated(_mode);
+    }
+
+    /**
+     * @notice Update minimum COC holding required
+     */
+    function setMinCOCHolding(uint256 _minCOCHolding) external onlyOwner {
+        minCOCHolding = _minCOCHolding;
+        emit MinCOCHoldingUpdated(_minCOCHolding);
+    }
+
+    /**
+     * @notice Update grace period for battle cancellation
+     */
+    function setGracePeriod(uint256 _gracePeriod) external onlyOwner {
+        gracePeriod = _gracePeriod;
+    }
+
+    /**
+     * @notice Cancel a battle after grace period elapses
+     */
+    function cancelExpiredBattle(uint256 _battleId) external onlyOwner {
+        Battle storage battle = battles[_battleId];
+        require(battle.status == BattleStatus.Active, "Not active");
+        require(block.timestamp > battle.endTime + gracePeriod, "Grace period active");
+
+        battle.status = BattleStatus.Cancelled;
+        _removeFromActiveBattles(_battleId);
+
+        emit BattleCancelled(_battleId);
+    }
+    
+    /**
+     * @notice Record total bet volume for a battle
+     */
+    function recordBet(uint256 _battleId, uint256 _amount) external {
+        require(msg.sender == bettingPool, "Not betting pool");
+        battles[_battleId].totalBets += _amount;
+    }
     
     /**
      * @notice Get active battles
      */
     function getActiveBattles() external view returns (uint256[] memory) {
         return activeBattles;
-    }
-    
-    /**
-     * @notice Get battle checkpoints
-     */
-    function getBattleCheckpoints(uint256 _battleId) 
-        external 
-        view 
-        returns (Checkpoint[] memory) 
-    {
-        return battleCheckpoints[_battleId];
-    }
-    
-    /**
-     * @dev Create default checkpoints for a battle
-     */
-    function _createDefaultCheckpoints(
-        uint256 _battleId,
-        uint256 _startTime,
-        uint256 _endTime
-    ) internal {
-        // 1 hour
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _startTime + 1 hours,
-            description: "1 Hour"
-        }));
-        
-        // 12 hours
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _startTime + 12 hours,
-            description: "12 Hours"
-        }));
-        
-        // Day 1
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _startTime + 1 days,
-            description: "Day 1"
-        }));
-        
-        // Day 1.5
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _startTime + 36 hours,
-            description: "Day 1.5"
-        }));
-        
-        // Day 2
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _startTime + 2 days,
-            description: "Day 2"
-        }));
-        
-        // End
-        battleCheckpoints[_battleId].push(Checkpoint({
-            timestamp: _endTime,
-            description: "Final"
-        }));
     }
     
     /**

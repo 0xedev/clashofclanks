@@ -1,0 +1,226 @@
+:root {
+  --battle-bg: rgba(120, 95, 255, 0.08);
+  --battle-border: rgba(120, 95, 255, 0.35);
+  --battle-border-spotlight: rgba(245, 158, 11, 0.75);
+}
+
+.battle-list {
+  display: grid;
+  gap: 12px;
+}
+
+.battle-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.battle-list__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #d9ccff;
+}
+
+.battle-list__empty {
+  text-align: center;
+  padding: 16px 0;
+  color: rgba(217, 204, 255, 0.75);
+  font-size: 13px;
+}
+
+.battle-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.battle-card {
+  position: relative;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--battle-border);
+  background: var(--battle-bg);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.battle-card:hover {
+  border-color: rgba(168, 142, 255, 0.7);
+  transform: translateY(-1px);
+}
+
+.battle-card--spotlight {
+  border-color: var(--battle-border-spotlight);
+  background: linear-gradient(
+    140deg,
+    rgba(245, 158, 11, 0.12),
+    rgba(88, 28, 135, 0.2)
+  );
+}
+
+.battle-card__badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.9);
+  color: #111827;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.battle-card__badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.battle-card__theme {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(120, 95, 255, 0.2);
+  font-size: 11px;
+  font-weight: 600;
+  color: #e4dcff;
+}
+
+.battle-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.battle-card__token {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.battle-card__symbol {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.battle-card__name {
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.battle-card__action {
+  border: none;
+  background: rgba(124, 58, 237, 0.8);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.battle-card__action--secondary {
+  background: rgba(236, 72, 153, 0.85);
+}
+
+.battle-card__divider {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(217, 204, 255, 0.75);
+}
+
+.battle-card__stats {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(120, 95, 255, 0.2);
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.battle-card__stat {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.battle-card__stat strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.battle-card__details {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  background: linear-gradient(
+    90deg,
+    rgba(124, 58, 237, 0.9),
+    rgba(236, 72, 153, 0.85)
+  );
+  color: #f8fafc;
+  cursor: pointer;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(124, 58, 237, 0.9);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.metrics {
+  display: grid;
+  gap: 10px;
+}
+
+.metrics__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d9ccff;
+}
+
+.metrics__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.metrics__table th,
+.metrics__table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(120, 95, 255, 0.2);
+}
+
+.metrics__table th {
+  color: rgba(217, 204, 255, 0.7);
+  font-weight: 600;
+}
+
+.metrics__table td {
+  color: #f8fafc;
+}

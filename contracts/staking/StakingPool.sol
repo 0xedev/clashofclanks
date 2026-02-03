@@ -5,12 +5,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title StakingPool
  * @notice Staking mechanism for $COC tokens and @clinkers NFTs
  */
 contract StakingPool is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     /// @notice Stake information
     struct Stake {
@@ -84,10 +86,7 @@ contract StakingPool is Ownable, ReentrancyGuard {
         require(_amount > 0, "Cannot stake 0");
         
         // Transfer tokens
-        require(
-            cocToken.transferFrom(msg.sender, address(this), _amount),
-            "Transfer failed"
-        );
+        cocToken.safeTransferFrom(msg.sender, address(this), _amount);
         
         // Claim pending rewards first
         if (stakes[msg.sender].amount > 0) {
@@ -124,7 +123,7 @@ contract StakingPool is Ownable, ReentrancyGuard {
         totalVotingPower -= votingPowerLoss;
         
         // Transfer tokens back
-        require(cocToken.transfer(msg.sender, _amount), "Transfer failed");
+        cocToken.safeTransfer(msg.sender, _amount);
         
         emit COCUnstaked(msg.sender, _amount);
     }
@@ -208,10 +207,8 @@ contract StakingPool is Ownable, ReentrancyGuard {
      * @notice Fund reward pool (called by betting pool with 5% of fees)
      */
     function fundRewardPool(uint256 _amount) external {
-        require(
-            cocToken.transferFrom(msg.sender, address(this), _amount),
-            "Transfer failed"
-        );
+        require(_amount > 0, "Cannot fund 0");
+        cocToken.safeTransferFrom(msg.sender, address(this), _amount);
         rewardPool += _amount;
         emit RewardPoolFunded(_amount);
     }
@@ -254,34 +251,36 @@ contract StakingPool is Ownable, ReentrancyGuard {
         uint256 timeStaked = block.timestamp - stake.lastClaimTime;
         uint256 reward = (stake.amount * timeStaked * rewardRatePerSecond) / 10000;
         
-        if (reward > 0 && reward <= rewardPool) {
+        if (reward > 0) {
             stake.lastClaimTime = block.timestamp;
+            require(rewardPool >= reward, "Insufficient reward pool");
             rewardPool -= reward;
-            require(cocToken.transfer(_user, reward), "Reward transfer failed");
-            return reward;
+            cocToken.safeTransfer(_user, reward);
+            emit RewardsClaimed(_user, reward);
         }
         
-        return 0;
+        return reward;
     }
     
     /**
      * @dev Claim NFT staking rewards
      */
-    function _claimNFTRewards(address _user, uint256 _index) internal returns (uint256) {
-        NFTStake storage nftStake = nftStakes[_user][_index];
+    function _claimNFTRewards(address _user, uint256 _nftIndex) internal returns (uint256) {
+        NFTStake storage nftStake = nftStakes[_user][_nftIndex];
         uint256 timeStaked = block.timestamp - nftStake.lastClaimTime;
         
-        // NFT holders get boosted rewards (2x)
-        uint256 baseStake = stakes[_user].amount > 0 ? stakes[_user].amount : 1000 * 10**18;
+        // NFT stakers get 2x rewards on their COC stake
+        uint256 baseStake = stakes[_user].amount > 0 ? stakes[_user].amount : 1000 * 10**18; // Base for non-COC stakers
         uint256 reward = (baseStake * timeStaked * rewardRatePerSecond * 2) / 10000;
         
-        if (reward > 0 && reward <= rewardPool) {
+        if (reward > 0) {
             nftStake.lastClaimTime = block.timestamp;
+            require(rewardPool >= reward, "Insufficient reward pool");
             rewardPool -= reward;
-            require(cocToken.transfer(_user, reward), "Reward transfer failed");
-            return reward;
+            cocToken.safeTransfer(_user, reward);
+            emit RewardsClaimed(_user, reward);
         }
         
-        return 0;
+        return reward;
     }
 }

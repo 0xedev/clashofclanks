@@ -6,94 +6,58 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title ClashOfClanks Token ($COC)
- * @notice Native token for the Clash of Clanks prediction market platform
- * @dev ERC20 token with burning capability, deployed via Clanker
+ * @title COCToken
+ * @notice Native token for Clash of Clanks with trading controls and burn functionality
  */
 contract COCToken is ERC20, ERC20Burnable, Ownable {
-    
-    /// @notice Maximum supply cap
-    uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
-    
-    /// @notice Timestamp when trading can start
-    uint256 public tradingEnabledTime;
     
     /// @notice Whether trading is enabled
     bool public tradingEnabled;
     
-    /// @notice Addresses exempt from trading restrictions
-    mapping(address => bool) public isExemptFromRestrictions;
+    /// @notice Mapping of addresses that can trade even when trading is disabled
+    mapping(address => bool) public isWhitelisted;
     
-    event TradingEnabled(uint256 timestamp);
-    event ExemptionUpdated(address indexed account, bool isExempt);
+    /// Events
+    event TradingEnabled();
+    event WhitelistUpdated(address indexed account, bool isWhitelisted);
     
     /**
      * @notice Constructor
-     * @param initialSupply Initial token supply to mint
+     * @param initialOwner The address that will receive the initial supply and own the contract
+     * @param initialSupply The initial supply of tokens (in wei)
      */
     constructor(
+        address initialOwner,
         uint256 initialSupply
-    ) ERC20("Clash of Clanks", "COC") Ownable(msg.sender) {
-        require(initialSupply <= MAX_SUPPLY, "Exceeds max supply");
-        
-        _mint(msg.sender, initialSupply);
-        
-        // Platform contracts are exempt from restrictions
-        isExemptFromRestrictions[msg.sender] = true;
+    ) ERC20("Clash of Clanks", "COC") Ownable(initialOwner) {
+        _mint(initialOwner, initialSupply);
+        isWhitelisted[initialOwner] = true;
     }
     
     /**
-     * @notice Enable trading
+     * @notice Enable trading for all users
      */
     function enableTrading() external onlyOwner {
         require(!tradingEnabled, "Trading already enabled");
         tradingEnabled = true;
-        tradingEnabledTime = block.timestamp;
-        emit TradingEnabled(block.timestamp);
+        emit TradingEnabled();
     }
     
     /**
-     * @notice Update exemption status for an address
-     * @param account Address to update
-     * @param exempt Whether the address should be exempt
+     * @notice Update whitelist status for an address
      */
-    function setExemption(address account, bool exempt) external onlyOwner {
-        isExemptFromRestrictions[account] = exempt;
-        emit ExemptionUpdated(account, exempt);
+    function updateWhitelist(address account, bool status) external onlyOwner {
+        isWhitelisted[account] = status;
+        emit WhitelistUpdated(account, status);
     }
     
     /**
-     * @notice Override transfer to add restrictions
+     * @dev Hook that is called before any transfer of tokens.
      */
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal virtual override {
-        // Allow minting and burning
-        if (from == address(0) || to == address(0)) {
-            super._update(from, to, value);
-            return;
+    function _update(address from, address to, uint256 value) internal virtual override {
+        if (!tradingEnabled) {
+            require(isWhitelisted[from] || isWhitelisted[to], "Trading not yet enabled");
         }
-        
-        // Check trading restrictions
-        require(
-            tradingEnabled || 
-            isExemptFromRestrictions[from] || 
-            isExemptFromRestrictions[to],
-            "Trading not enabled"
-        );
-        
         super._update(from, to, value);
-    }
-    
-    /**
-     * @notice Mint additional tokens (up to MAX_SUPPLY)
-     * @param to Address to mint to
-     * @param amount Amount to mint
-     */
-    function mint(address to, uint256 amount) external onlyOwner {
-        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
-        _mint(to, amount);
     }
 }
