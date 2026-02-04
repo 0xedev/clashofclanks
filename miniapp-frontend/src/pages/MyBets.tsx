@@ -10,54 +10,9 @@ import {
   Flame,
   ShieldAlert,
 } from "lucide-react";
+import { useBetting } from "../lib/useBetting";
 
-// Mock Data to simulate a real environment
-const ACTIVE_BETS: BetData[] = [
-  {
-    id: 1,
-    pair: "AAVE/UNI",
-    icon: "👻",
-    vsIcon: "🦄",
-    type: "Long",
-    leverage: 10,
-    collateral: 500,
-    pnl: 120,
-    pnlPercent: 24,
-    status: "winning",
-    liquidationRisk: 15, // 0-100%
-  },
-  {
-    id: 2,
-    pair: "PEPE/DOGE",
-    icon: "🐸",
-    vsIcon: "🐶",
-    type: "Short",
-    leverage: 50,
-    collateral: 1000,
-    pnl: -800,
-    pnlPercent: -80,
-    status: "danger",
-    liquidationRisk: 90,
-  },
-];
-
-const HISTORY_BETS: BetData[] = [
-  {
-    id: 3,
-    pair: "BTC/USD",
-    icon: "₿",
-    vsIcon: "💵",
-    type: "Long",
-    leverage: 20,
-    collateral: 200,
-    pnl: 450,
-    pnlPercent: 225,
-    status: "closed-win",
-    date: "2h ago",
-  },
-];
-
-type BetStatus = "winning" | "danger" | "closed-win";
+type BetStatus = "winning" | "danger" | "closed-win" | "closed-loss";
 
 type BetData = {
   id: number;
@@ -72,22 +27,57 @@ type BetData = {
   status: BetStatus;
   liquidationRisk?: number;
   date?: string;
+  battleId: number;
+  settled: boolean;
+  cashedOut: boolean;
+  liquidated: boolean;
 };
 
 type BetCardProps = {
   data: BetData;
   isHistory?: boolean;
+  onCashOut?: (betId: number) => Promise<void>;
+  onSettle?: (betId: number) => Promise<void>;
 };
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("active");
+  const [processingBetId, setProcessingBetId] = useState<number | null>(null);
+  const {
+    activeBets,
+    historyBets,
+    totalActiveValue,
+    totalPnL,
+    isLoading,
+    error,
+    cashOutBet,
+    settleBet,
+    refresh,
+  } = useBetting();
 
-  // Calculate totals for the header
-  const totalActiveValue = ACTIVE_BETS.reduce(
-    (acc, bet) => acc + bet.collateral + bet.pnl,
-    0,
-  );
-  const totalPnL = ACTIVE_BETS.reduce((acc, bet) => acc + bet.pnl, 0);
+  const handleCashOut = async (betId: number) => {
+    setProcessingBetId(betId);
+    try {
+      await cashOutBet(betId);
+    } catch (err) {
+      console.error("Cash out failed:", err);
+      alert("Failed to cash out bet");
+    } finally {
+      setProcessingBetId(null);
+    }
+  };
+
+  const handleSettle = async (betId: number) => {
+    setProcessingBetId(betId);
+    try {
+      await settleBet(betId);
+    } catch (err) {
+      console.error("Settle failed:", err);
+      alert("Failed to settle bet");
+    } finally {
+      setProcessingBetId(null);
+    }
+  };
 
   return (
     <div className="flex-1 bg-[#060610] text-white min-h-screen">
@@ -103,7 +93,11 @@ export default function App() {
                 My Activity
               </h1>
             </div>
-            <button className="p-2 sm:p-2.5 hover:bg-white/5 rounded-full transition-colors text-white/60 hover:text-white">
+            <button
+              onClick={refresh}
+              disabled={isLoading}
+              className="p-2 sm:p-2.5 hover:bg-white/5 rounded-full transition-colors text-white/60 hover:text-white disabled:opacity-50"
+            >
               <History className="w-5 h-5" />
             </button>
           </div>
@@ -142,7 +136,7 @@ export default function App() {
                 : "text-white/50 hover:text-white hover:bg-white/5"
             }`}
           >
-            Active ({ACTIVE_BETS.length})
+            Active ({activeBets.length})
           </button>
           <button
             onClick={() => setActiveTab("history")}
@@ -152,22 +146,45 @@ export default function App() {
                 : "text-white/50 hover:text-white hover:bg-white/5"
             }`}
           >
-            History
+            History ({historyBets.length})
           </button>
         </div>
 
         {/* Content Area */}
         <div className="space-y-4 sm:space-y-5">
-          {activeTab === "active"
-            ? ACTIVE_BETS.map((bet) => <BetCard key={bet.id} data={bet} />)
-            : HISTORY_BETS.map((bet) => (
-                <BetCard key={bet.id} data={bet} isHistory />
-              ))}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-800">
+              {error}
+            </div>
+          )}
 
-          {/* Empty State */}
-          {activeTab === "active" && ACTIVE_BETS.length === 0 && (
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="inline-block w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <div className="text-xs text-white/50 mt-2">Loading bets...</div>
+            </div>
+          ) : activeTab === "active" ? (
+            activeBets.length > 0 ? (
+              activeBets.map((bet) => (
+                <BetCard
+                  key={bet.id}
+                  data={bet}
+                  onCashOut={handleCashOut}
+                  onSettle={handleSettle}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12 text-white/50">
+                <p>No active bets</p>
+              </div>
+            )
+          ) : historyBets.length > 0 ? (
+            historyBets.map((bet) => (
+              <BetCard key={bet.id} data={bet} isHistory />
+            ))
+          ) : (
             <div className="text-center py-12 text-white/50">
-              <p>No active bets found</p>
+              <p>No bet history</p>
             </div>
           )}
         </div>
@@ -177,9 +194,15 @@ export default function App() {
 }
 
 // Reusable Bet Card Component
-function BetCard({ data, isHistory = false }: BetCardProps) {
+function BetCard({
+  data,
+  isHistory = false,
+  onCashOut,
+  onSettle,
+}: BetCardProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
   const isWinning = data.pnl >= 0;
-  const isDanger = data.liquidationRisk > 80;
+  const isDanger = (data.liquidationRisk ?? 0) > 80;
 
   // Dynamic Styles based on state
   const borderColor = isHistory
@@ -255,7 +278,9 @@ function BetCard({ data, isHistory = false }: BetCardProps) {
           </div>
 
           <div className="text-right flex-shrink-0">
-            <div className="text-xs sm:text-sm text-white/50 font-medium mb-0.5">PnL</div>
+            <div className="text-xs sm:text-sm text-white/50 font-medium mb-0.5">
+              PnL
+            </div>
             <div
               className={`text-lg sm:text-xl font-mono font-bold flex items-center justify-end gap-1.5 sm:gap-2 ${isWinning ? "text-emerald-400" : "text-red-400"}`}
             >
@@ -319,10 +344,30 @@ function BetCard({ data, isHistory = false }: BetCardProps) {
         )}
 
         {/* Footer Actions */}
-        {!isHistory && (
-          <button className="mt-4 sm:mt-5 w-full py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 active:scale-[0.98] border border-white/20 hover:border-white/30 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 group/btn">
-            {isWinning ? "Cash Out Winnings" : "Manage Position"}
-            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/40 group-hover/btn:text-white group-hover/btn:translate-x-1 transition-transform" />
+        {!isHistory && onCashOut && (
+          <button
+            onClick={async () => {
+              setIsProcessing(true);
+              try {
+                await onCashOut(data.id);
+              } finally {
+                setIsProcessing(false);
+              }
+            }}
+            disabled={isProcessing}
+            className="mt-4 sm:mt-5 w-full py-2.5 sm:py-3 bg-white/10 hover:bg-white/20 active:scale-[0.98] border border-white/20 hover:border-white/30 text-white font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                {isWinning ? "Cash Out Winnings" : "Close Position"}
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/40 group-hover/btn:text-white group-hover/btn:translate-x-1 transition-transform" />
+              </>
+            )}
           </button>
         )}
       </div>
