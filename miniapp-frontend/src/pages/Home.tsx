@@ -22,7 +22,7 @@ export function Home() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: "url(/src/assets/bg-unified.png)",
+            backgroundImage: "url(/bg-unified.png)",
             backgroundSize: "cover",
             backgroundPosition: "center top",
             backgroundRepeat: "no-repeat",
