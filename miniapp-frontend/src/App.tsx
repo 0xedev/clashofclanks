@@ -9,6 +9,7 @@ import { Staking } from "./pages/Staking";
 import { Profile } from "./pages/Profile";
 import { About } from "./pages/About";
 import { BattleDetail } from "./pages/BattleDetail";
+import { Leaderboard } from "./pages/Leaderboard";
 
 function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -44,14 +45,7 @@ function AppContent() {
         <Route path="/staking" element={<Staking />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/about" element={<About />} />
-        <Route
-          path="/leaderboard"
-          element={
-            <div className="text-center text-white pt-20">
-              Leaderboard Coming Soon
-            </div>
-          }
-        />
+        <Route path="/leaderboard" element={<Leaderboard />} />
       </Routes>
     </Layout>
   );
