@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { useBetting } from "../lib/useBetting";
+import { ShareButton } from "../components/ShareButton";
 
 type BetStatus = "winning" | "danger" | "closed-win" | "closed-loss";
 
@@ -71,6 +72,24 @@ export default function App() {
     setProcessingBetId(betId);
     try {
       await settleBet(betId);
+      // Show success and share option after settling
+      const bet = historyBets.find((b) => b.id === betId);
+      if (bet && bet.pnl > 0) {
+        // Wait a moment for state to update
+        setTimeout(() => {
+          const confirmShare = window.confirm(
+            `🎉 Congrats! You won ${bet.pnl.toFixed(2)} COC!\n\nShare your victory?`,
+          );
+          if (confirmShare) {
+            const shareUrl = `https://clashofclanks.vercel.app/battles/${bet.battleId}`;
+            const castText = `Just won ${bet.pnl.toFixed(2)} COC on Clash of Clanks! 🔥\n\n${shareUrl}`;
+            window.open(
+              `https://warpcast.com/~/compose?text=${encodeURIComponent(castText)}`,
+              "_blank",
+            );
+          }
+        }, 500);
+      }
     } catch (err) {
       console.error("Settle failed:", err);
       alert("Failed to settle bet");
@@ -229,7 +248,7 @@ function BetCard({
       />
 
       {/* Top Banner (Status) */}
-      {!isHistory && (
+      {!isHistory ? (
         <div className="flex justify-between items-start pt-3.5 sm:pt-4 px-3.5 sm:px-4">
           {/* Leverage Badge */}
           <div
@@ -249,6 +268,18 @@ function BetCard({
             </div>
           )}
         </div>
+      ) : (
+        isWinning && (
+          <div className="flex justify-end pt-3.5 px-3.5">
+            <ShareButton
+              title={`Won ${data.pnl.toFixed(2)} COC on ${data.pair}!`}
+              url={`/battles/${data.battleId}`}
+              description={`🎉 Just won ${data.pnl.toFixed(2)} COC with ${data.leverage}x leverage on Clash of Clanks!`}
+              variant="secondary"
+              size="sm"
+            />
+          </div>
+        )
       )}
 
       <div className="p-3.5 sm:p-5 pt-2">

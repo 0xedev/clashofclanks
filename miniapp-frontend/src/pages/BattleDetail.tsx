@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, TrendingUp } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { ShareButton } from "../components/ShareButton";
 
 export function BattleDetail() {
   const { id } = useParams();
@@ -11,13 +12,22 @@ export function BattleDetail() {
 
   return (
     <div className="relative z-10 w-full p-4 space-y-6 pb-24">
-      <Link
-        to="/"
-        className="flex items-center gap-2 text-white/50 hover:text-white transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        <span>Back to Battles</span>
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Back to Battles</span>
+        </Link>
+        <ShareButton
+          title="UNI vs AAVE Battle"
+          url={`/battles/${id}`}
+          description="Check out this epic token battle! Who will win? 🔥"
+          variant="secondary"
+          size="sm"
+        />
+      </div>
 
       {/* Battle Header */}
       <div className="glass-panel p-6 rounded-2xl flex justify-between items-center relative overflow-hidden">
