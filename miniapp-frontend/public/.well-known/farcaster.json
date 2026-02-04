@@ -1,1 +1,27 @@
-{}
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjIzOTM5NiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDRENEU1MjIzODRkNkYxMDkwYkZENEM0NTI3YTdkNTJERmQyMGJDYTMifQ",
+    "payload": "eyJkb21haW4iOiJjbGFzaG9mY2xhbmtzLnZlcmNlbC5hcHAifQ",
+    "signature": "fUg9yx7Uu5wN6zHs2Y2Y67tjN8VSarVYPEEcD7xJpqMYRgDbyrfI4/kCBWrSRdAPN+zZEK29OilpMnAeidaHLxs="
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Clash of Clanks",
+    "iconUrl": "https://clashofclanks.vercel.app/logo.png",
+    "homeUrl": "https://clashofclanks.vercel.app",
+    "splashImageUrl": "https://clashofclanks.vercel.app/splash.png",
+    "splashBackgroundColor": "#060610",
+    "subtitle": "Token Battle Arena",
+    "description": "Bet on Clanker token battles with leverage. Winner takes the pot! Stake COC tokens, earn rewards, and climb the leaderboard.",
+    "screenshotUrls": ["https://clashofclanks.vercel.app/image.png"],
+    "primaryCategory": "games",
+    "tags": ["defi", "betting", "tokens", "games", "base"],
+    "heroImageUrl": "https://clashofclanks.vercel.app/image.png",
+    "tagline": "Token Battle Arena",
+    "ogTitle": "Clash of Clanks",
+    "ogDescription": "Bet on Clanker token battles with leverage. Winner takes the pot!",
+    "ogImageUrl": "https://clashofclanks.vercel.app/image.png",
+    "requiredChains": ["eip155:8453"],
+    "requiredCapabilities": ["actions.signIn", "wallet.getEthereumProvider"]
+  }
+}
