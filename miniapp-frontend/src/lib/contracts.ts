@@ -1,5 +1,3 @@
-import { Contract } from "ethers";
-
 export const ADDRESSES = {
   BATTLE_MANAGER: import.meta.env.VITE_BATTLE_MANAGER_ADDRESS || "",
   BETTING_POOL: import.meta.env.VITE_BETTING_POOL_ADDRESS || "",
@@ -1629,27 +1627,3 @@ export const ABIS = {
     "function decimals() view returns (uint8)",
   ],
 };
-
-export function getBattleManagerContract(provider: any) {
-  return new Contract(ADDRESSES.BATTLE_MANAGER, ABIS.BattleManager, provider);
-}
-
-export function getBettingPoolContract(provider: any) {
-  return new Contract(ADDRESSES.BETTING_POOL, ABIS.BettingPool, provider);
-}
-
-export function getStakingPoolContract(provider: any) {
-  return new Contract(ADDRESSES.STAKING_POOL, ABIS.StakingPool, provider);
-}
-
-export function getOracleContract(provider: any) {
-  return new Contract(ADDRESSES.ORACLE, ABIS.TokenMetricsOracle, provider);
-}
-
-export function getCOCTokenContract(provider: any) {
-  return new Contract(ADDRESSES.COC_TOKEN, ABIS.ERC20, provider);
-}
-
-export function getERC20Contract(address: string, provider: any) {
-  return new Contract(address, ABIS.ERC20, provider);
-}

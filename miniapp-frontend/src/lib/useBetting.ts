@@ -5,7 +5,7 @@ import {
   useReadContract,
   usePublicClient,
 } from "wagmi";
-import { ethers } from "ethers";
+import { encodeFunctionData, formatUnits } from "viem";
 import { ADDRESSES, ABIS } from "./contracts";
 
 interface Bet {
@@ -153,7 +153,7 @@ export const useBetting = () => {
             betData[2].toLowerCase() === battleData[1].toLowerCase(); // predictedWinner vs token1
 
           // Calculate PnL (mock calculation - TODO: implement real-time PnL calculation)
-          const collateral = parseFloat(ethers.formatUnits(betData[3], 18)); // amount
+          const collateral = parseFloat(formatUnits(betData[3], 18)); // amount
           const leverage = Number(betData[4]) / 100; // leverage from basis points
           let pnl = 0;
           let pnlPercent = 0;
@@ -237,8 +237,11 @@ export const useBetting = () => {
       if (!address) throw new Error("No wallet connected");
 
       try {
-        const iface = new ethers.Interface(ABIS.BettingPool);
-        const cashOutData = iface.encodeFunctionData("cashOutBet", [betId]);
+        const cashOutData = encodeFunctionData({
+          abi: ABIS.BettingPool,
+          functionName: "cashOutBet",
+          args: [BigInt(betId)],
+        });
 
         await sendCallsAsync({
           calls: [
@@ -264,8 +267,11 @@ export const useBetting = () => {
       if (!address) throw new Error("No wallet connected");
 
       try {
-        const iface = new ethers.Interface(ABIS.BettingPool);
-        const settleData = iface.encodeFunctionData("settleBet", [betId]);
+        const settleData = encodeFunctionData({
+          abi: ABIS.BettingPool,
+          functionName: "settleBet",
+          args: [BigInt(betId)],
+        });
 
         await sendCallsAsync({
           calls: [

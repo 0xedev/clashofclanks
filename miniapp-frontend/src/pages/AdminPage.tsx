@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ethers } from "ethers";
+import { parseUnits, encodeFunctionData } from "viem";
 
 import "./admin.css";
 import { BattleMetrics } from "../components/BattleMetrics";
 import { useAuth } from "../lib/useAuth";
 import { useWallet } from "../lib/useWallet";
-import { getOracleContract, getBattleManagerContract } from "../lib/contracts";
+import { ABIS, ADDRESSES } from "../lib/contracts";
 
 export function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -24,31 +24,29 @@ export function AdminPage() {
     setMessage("");
 
     try {
-      const oracleContract = getOracleContract(new ethers.JsonRpcProvider());
-
-      const data = oracleContract.interface.encodeFunctionData(
-        "submitBatchMetrics",
-        [
+      const data = encodeFunctionData({
+        abi: ABIS.TokenMetricsOracle,
+        functionName: "submitBatchMetrics",
+        args: [
           [metrics.token1.address, metrics.token2.address],
           [
-            ethers.parseUnits(metrics.token1.volumeUSD24h.toString(), 0),
-            ethers.parseUnits(metrics.token2.volumeUSD24h.toString(), 0),
+            parseUnits(metrics.token1.volumeUSD24h.toString(), 0),
+            parseUnits(metrics.token2.volumeUSD24h.toString(), 0),
           ],
           [
-            ethers.parseUnits(metrics.token1.priceUSD.toString(), 18),
-            ethers.parseUnits(metrics.token2.priceUSD.toString(), 18),
+            parseUnits(metrics.token1.priceUSD.toString(), 18),
+            parseUnits(metrics.token2.priceUSD.toString(), 18),
           ],
           [
-            ethers.parseUnits(metrics.token1.liquidityUSD.toString(), 0),
-            ethers.parseUnits(metrics.token2.liquidityUSD.toString(), 0),
+            parseUnits(metrics.token1.liquidityUSD.toString(), 0),
+            parseUnits(metrics.token2.liquidityUSD.toString(), 0),
           ],
           [metrics.token1.txCount24h, metrics.token2.txCount24h],
         ],
-      );
+      });
 
-      const oracleAddress = import.meta.env.VITE_ORACLE_ADDRESS as string;
       const result = await sendTransaction({
-        to: oracleAddress,
+        to: ADDRESSES.ORACLE,
         data,
       });
 
@@ -72,28 +70,17 @@ export function AdminPage() {
     }
 
     setIsSubmitting(true);
-    setMessage("Fetching winner from oracle...");
+    setMessage("Finalizing battle...");
 
     try {
-      const provider = new ethers.JsonRpcProvider(
-        import.meta.env.VITE_BASE_RPC_URL as string,
-      );
-      const oracleContract = getOracleContract(provider);
+      const data = encodeFunctionData({
+        abi: ABIS.BattleManager,
+        functionName: "completeBattle",
+        args: [BigInt(Number.parseInt(battleId, 10))],
+      });
 
-      await oracleContract.compareTokens(token1, token2);
-
-      const battleManager = getBattleManagerContract(
-        new ethers.JsonRpcProvider(),
-      );
-      const data = battleManager.interface.encodeFunctionData(
-        "completeBattle",
-        [Number.parseInt(battleId, 10)],
-      );
-
-      const battleManagerAddress = import.meta.env
-        .VITE_BATTLE_MANAGER_ADDRESS as string;
       const result = await sendTransaction({
-        to: battleManagerAddress,
+        to: ADDRESSES.BATTLE_MANAGER,
         data,
       });
 

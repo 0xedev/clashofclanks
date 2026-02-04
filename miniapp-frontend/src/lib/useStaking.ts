@@ -1,101 +1,75 @@
-import { useState, useEffect, useCallback } from "react";
-import { ethers } from "ethers";
-import { useAccount, useSendCalls } from "wagmi";
-import {
-  getStakingPoolContract,
-  getCOCTokenContract,
-  ADDRESSES,
-  ABIS,
-} from "./contracts";
-
-interface StakeInfo {
-  amount: string;
-  timestamp: bigint;
-  lastClaimTime: bigint;
-  votingPower: string;
-}
-
-interface NFTStakeInfo {
-  tokenId: string;
-  timestamp: bigint;
-  lastClaimTime: bigint;
-  votingPower: string;
-}
+import { useState, useCallback } from "react";
+import { encodeFunctionData, parseUnits, formatUnits } from "viem";
+import { useAccount, useSendCalls, useReadContract } from "wagmi";
+import { ADDRESSES, ABIS } from "./contracts";
 
 interface StakingState {
-  // COC staking
-  cocStaked: string;
-  pendingRewards: string;
-  votingPower: string;
-
-  // NFT staking
-  nftStaked: NFTStakeInfo[];
-
-  // Loading states
   loading: boolean;
-  loadingRewards: boolean;
-  loadingVotingPower: boolean;
-
-  // Errors
   error: string | null;
 }
 
-export function useStaking() {
+export const useStaking = () => {
   const { address } = useAccount();
   const { sendCallsAsync } = useSendCalls();
   const [state, setState] = useState<StakingState>({
-    cocStaked: "0",
-    pendingRewards: "0",
-    votingPower: "0",
-    nftStaked: [],
-    loading: true,
-    loadingRewards: false,
-    loadingVotingPower: false,
+    loading: false,
     error: null,
   });
 
-  // Fetch staking data
-  const fetchStakingData = useCallback(async () => {
-    if (!address) return;
+  // Read COC stake info
+  const { data: stakeInfo, refetch: refetchStake } = useReadContract({
+    address: ADDRESSES.STAKING_POOL as `0x${string}`,
+    abi: ABIS.StakingPool,
+    functionName: "stakes",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+      refetchInterval: 30000, // 30s
+    },
+  });
 
-    try {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-      const stakingContract = getStakingPoolContract(provider);
+  // Read pending rewards
+  const { data: pendingRewards, refetch: refetchRewards } = useReadContract({
+    address: ADDRESSES.STAKING_POOL as `0x${string}`,
+    abi: ABIS.StakingPool,
+    functionName: "getPendingRewards",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+      refetchInterval: 30000,
+    },
+  });
 
-      // Get COC stake info
-      const stakeInfo = await stakingContract.stakes(address);
-      const cocAmount = ethers.formatEther(stakeInfo.amount);
+  // Read voting power
+  const { data: votingPower, refetch: refetchVotingPower } = useReadContract({
+    address: ADDRESSES.STAKING_POOL as `0x${string}`,
+    abi: ABIS.StakingPool,
+    functionName: "getVotingPower",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+      refetchInterval: 30000,
+    },
+  });
 
-      // Get pending rewards
-      const rewards = await stakingContract.getPendingRewards(address);
-      const rewardsAmount = ethers.formatEther(rewards);
+  // Read COC token allowance
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: ADDRESSES.COC_TOKEN as `0x${string}`,
+    abi: ABIS.ERC20,
+    functionName: "allowance",
+    args: address ? [address, ADDRESSES.STAKING_POOL] : undefined,
+    query: {
+      enabled: !!address,
+    },
+  });
 
-      // Get voting power
-      const vp = await stakingContract.getVotingPower(address);
-      const vpAmount = vp.toString();
-
-      setState((prev) => ({
-        ...prev,
-        cocStaked: cocAmount,
-        pendingRewards: rewardsAmount,
-        votingPower: vpAmount,
-        loading: false,
-      }));
-    } catch (err) {
-      const errorMsg =
-        err instanceof Error ? err.message : "Failed to fetch staking data";
-      setState((prev) => ({ ...prev, error: errorMsg, loading: false }));
-      console.error("Staking fetch error:", err);
-    }
-  }, [address]);
-
-  // Refresh data periodically
-  useEffect(() => {
-    fetchStakingData();
-    const interval = setInterval(fetchStakingData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
-  }, [fetchStakingData]);
+  const cocStaked = stakeInfo
+    ? formatUnits((stakeInfo as any)[0] || 0n, 18)
+    : "0";
+  const rewards = pendingRewards
+    ? formatUnits(pendingRewards as bigint, 18)
+    : "0";
+  const vp = votingPower ? (votingPower as bigint).toString() : "0";
 
   // Stake COC tokens
   const stakeCOC = useCallback(
@@ -105,52 +79,53 @@ export function useStaking() {
         if (!amount || parseFloat(amount) <= 0)
           throw new Error("Invalid amount");
 
-        const amountWei = ethers.parseEther(amount);
-        const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-        const cocContract = getCOCTokenContract(provider);
-        const stakingContract = getStakingPoolContract(provider);
+        setState({ loading: true, error: null });
 
-        // Check allowance
-        const allowance = await cocContract.allowance(
-          address,
-          ADDRESSES.STAKING_POOL,
-        );
+        const amountWei = parseUnits(amount, 18);
+        const currentAllowance = (allowance as bigint) || 0n;
 
         const calls = [];
 
         // Add approve call if needed
-        if (allowance < amountWei) {
+        if (currentAllowance < amountWei) {
+          const approveData = encodeFunctionData({
+            abi: ABIS.ERC20,
+            functionName: "approve",
+            args: [ADDRESSES.STAKING_POOL as `0x${string}`, amountWei],
+          });
+
           calls.push({
             to: ADDRESSES.COC_TOKEN as `0x${string}`,
-            data: cocContract.interface.encodeFunctionData("approve", [
-              ADDRESSES.STAKING_POOL,
-              amountWei,
-            ]) as `0x${string}`,
+            data: approveData as `0x${string}`,
           });
         }
 
         // Add stake call
-        calls.push({
-          to: ADDRESSES.STAKING_POOL as `0x${string}`,
-          data: stakingContract.interface.encodeFunctionData("stakeCOC", [
-            amountWei,
-          ]) as `0x${string}`,
+        const stakeData = encodeFunctionData({
+          abi: ABIS.StakingPool,
+          functionName: "stakeCOC",
+          args: [amountWei],
         });
 
-        // Execute batch transaction
+        calls.push({
+          to: ADDRESSES.STAKING_POOL as `0x${string}`,
+          data: stakeData as `0x${string}`,
+        });
+
         await sendCallsAsync({ calls });
 
-        // Refresh data
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await fetchStakingData();
+        // Refetch data
+        await Promise.all([refetchStake(), refetchAllowance()]);
+
+        setState({ loading: false, error: null });
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Failed to stake";
-        setState((prev) => ({ ...prev, error: errorMsg }));
-        console.error("Stake error:", err);
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to stake COC";
+        setState({ loading: false, error: errorMsg });
         throw err;
       }
     },
-    [address, sendCallsAsync, fetchStakingData],
+    [address, allowance, sendCallsAsync, refetchStake, refetchAllowance],
   );
 
   // Unstake COC tokens
@@ -161,36 +136,35 @@ export function useStaking() {
         if (!amount || parseFloat(amount) <= 0)
           throw new Error("Invalid amount");
 
-        const amountWei = ethers.parseEther(amount);
-        const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-        const stakingContract = getStakingPoolContract(provider);
+        setState({ loading: true, error: null });
 
-        const txData = stakingContract.interface.encodeFunctionData(
-          "unstakeCOC",
-          [amountWei],
-        );
+        const amountWei = parseUnits(amount, 18);
+
+        const unstakeData = encodeFunctionData({
+          abi: ABIS.StakingPool,
+          functionName: "unstakeCOC",
+          args: [amountWei],
+        });
 
         await sendCallsAsync({
           calls: [
             {
               to: ADDRESSES.STAKING_POOL as `0x${string}`,
-              data: txData as `0x${string}`,
+              data: unstakeData as `0x${string}`,
             },
           ],
         });
 
-        // Refresh data
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await fetchStakingData();
+        await refetchStake();
+        setState({ loading: false, error: null });
       } catch (err) {
         const errorMsg =
-          err instanceof Error ? err.message : "Failed to unstake";
-        setState((prev) => ({ ...prev, error: errorMsg }));
-        console.error("Unstake error:", err);
+          err instanceof Error ? err.message : "Failed to unstake COC";
+        setState({ loading: false, error: errorMsg });
         throw err;
       }
     },
-    [address, sendCallsAsync, fetchStakingData],
+    [address, sendCallsAsync, refetchStake],
   );
 
   // Claim rewards
@@ -198,83 +172,68 @@ export function useStaking() {
     try {
       if (!address) throw new Error("Wallet not connected");
 
-      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-      const stakingContract = getStakingPoolContract(provider);
+      setState({ loading: true, error: null });
 
-      const txData = stakingContract.interface.encodeFunctionData(
-        "claimRewards",
-        [],
-      );
+      const claimData = encodeFunctionData({
+        abi: ABIS.StakingPool,
+        functionName: "claimRewards",
+        args: [],
+      });
 
       await sendCallsAsync({
         calls: [
           {
             to: ADDRESSES.STAKING_POOL as `0x${string}`,
-            data: txData as `0x${string}`,
+            data: claimData as `0x${string}`,
           },
         ],
       });
 
-      // Refresh data
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      await fetchStakingData();
+      await Promise.all([refetchRewards(), refetchStake()]);
+      setState({ loading: false, error: null });
     } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : "Failed to claim rewards";
-      setState((prev) => ({ ...prev, error: errorMsg }));
-      console.error("Claim error:", err);
+      setState({ loading: false, error: errorMsg });
       throw err;
     }
-  }, [address, sendCallsAsync, fetchStakingData]);
+  }, [address, sendCallsAsync, refetchRewards, refetchStake]);
 
   // Stake NFT
   const stakeNFT = useCallback(
     async (tokenId: string) => {
       try {
         if (!address) throw new Error("Wallet not connected");
+        if (!tokenId) throw new Error("Invalid token ID");
 
-        const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-        const stakingContract = getStakingPoolContract(provider);
+        setState({ loading: true, error: null });
 
-        const nftContract = new ethers.Contract(
-          ADDRESSES.COC_TOKEN, // TODO: Replace with actual NFT address
-          ["function approve(address to, uint256 tokenId)"],
-          provider,
-        );
-
-        const calls = [];
-
-        // Add NFT approval
-        calls.push({
-          to: ADDRESSES.COC_TOKEN as `0x${string}`, // TODO: Replace with actual NFT address
-          data: nftContract.interface.encodeFunctionData("approve", [
-            ADDRESSES.STAKING_POOL,
-            tokenId,
-          ]) as `0x${string}`,
+        // TODO: Check NFT approval and include approve call if needed
+        const stakeNFTData = encodeFunctionData({
+          abi: ABIS.StakingPool,
+          functionName: "stakeNFT",
+          args: [BigInt(tokenId)],
         });
 
-        // Add stake NFT call
-        calls.push({
-          to: ADDRESSES.STAKING_POOL as `0x${string}`,
-          data: stakingContract.interface.encodeFunctionData("stakeNFT", [
-            tokenId,
-          ]) as `0x${string}`,
+        await sendCallsAsync({
+          calls: [
+            {
+              to: ADDRESSES.STAKING_POOL as `0x${string}`,
+              data: stakeNFTData as `0x${string}`,
+            },
+          ],
         });
 
-        await sendCallsAsync({ calls });
-
-        // Refresh data
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await fetchStakingData();
+        await refetchVotingPower();
+        setState({ loading: false, error: null });
       } catch (err) {
         const errorMsg =
           err instanceof Error ? err.message : "Failed to stake NFT";
-        setState((prev) => ({ ...prev, error: errorMsg }));
-        console.error("NFT stake error:", err);
+        setState({ loading: false, error: errorMsg });
         throw err;
       }
     },
-    [address, sendCallsAsync, fetchStakingData],
+    [address, sendCallsAsync, refetchVotingPower],
   );
 
   // Unstake NFT
@@ -282,46 +241,52 @@ export function useStaking() {
     async (tokenId: string) => {
       try {
         if (!address) throw new Error("Wallet not connected");
+        if (!tokenId) throw new Error("Invalid token ID");
 
-        const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
-        const stakingContract = getStakingPoolContract(provider);
+        setState({ loading: true, error: null });
 
-        const txData = stakingContract.interface.encodeFunctionData(
-          "unstakeNFT",
-          [tokenId],
-        );
+        const unstakeNFTData = encodeFunctionData({
+          abi: ABIS.StakingPool,
+          functionName: "unstakeNFT",
+          args: [BigInt(tokenId)],
+        });
 
         await sendCallsAsync({
           calls: [
             {
               to: ADDRESSES.STAKING_POOL as `0x${string}`,
-              data: txData as `0x${string}`,
+              data: unstakeNFTData as `0x${string}`,
             },
           ],
         });
 
-        // Refresh data
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await fetchStakingData();
+        await refetchVotingPower();
+        setState({ loading: false, error: null });
       } catch (err) {
         const errorMsg =
           err instanceof Error ? err.message : "Failed to unstake NFT";
-        setState((prev) => ({ ...prev, error: errorMsg }));
-        console.error("NFT unstake error:", err);
+        setState({ loading: false, error: errorMsg });
         throw err;
       }
     },
-    [address, sendCallsAsync, fetchStakingData],
+    [address, sendCallsAsync, refetchVotingPower],
   );
 
+  const clearError = useCallback(() => {
+    setState((prev) => ({ ...prev, error: null }));
+  }, []);
+
   return {
-    ...state,
+    cocStaked,
+    pendingRewards: rewards,
+    votingPower: vp,
+    loading: state.loading,
+    error: state.error,
     stakeCOC,
     unstakeCOC,
     claimRewards,
     stakeNFT,
     unstakeNFT,
-    refreshData: fetchStakingData,
-    clearError: () => setState((prev) => ({ ...prev, error: null })),
+    clearError,
   };
-}
+};
