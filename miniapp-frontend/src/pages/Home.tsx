@@ -24,7 +24,7 @@ export function Home() {
           style={{
             backgroundImage: "url(/image.png)",
             backgroundSize: "cover",
-            backgroundPosition: "center top",
+            backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
           }}
         />
@@ -128,6 +128,89 @@ export function Home() {
               <div className="text-lg font-mono font-bold text-green-400 tracking-tight text-shadow-sm">
                 $124k
               </div>
+            </div>
+          </div>
+
+          {/* Suggested Predictions */}
+          <div className="space-y-2.5 mb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold text-white/60 uppercase tracking-widest flex items-center gap-2">
+                <Flame className="w-3.5 h-3.5 text-orange-400" />
+                Hot Predictions
+              </h2>
+              <span className="text-[10px] text-white/40">AI Suggested</span>
+            </div>
+
+            <div className="space-y-2">
+              {/* Prediction Card 1 */}
+              <Link
+                to="/battles"
+                className="block bg-gradient-to-r from-green-500/10 to-transparent border border-green-500/20 rounded-lg p-3 hover:border-green-500/40 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-white">
+                      PEPE vs SHIB
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 text-[10px] font-bold rounded">
+                      85% Win
+                    </span>
+                  </div>
+                  <TrendingUp className="w-3.5 h-3.5 text-green-400 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/50">PEPE to win</span>
+                  <span className="text-green-400 font-bold">
+                    +24% momentum
+                  </span>
+                </div>
+              </Link>
+
+              {/* Prediction Card 2 */}
+              <Link
+                to="/battles"
+                className="block bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20 rounded-lg p-3 hover:border-blue-500/40 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-white">
+                      DOGE vs WIF
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] font-bold rounded">
+                      78% Win
+                    </span>
+                  </div>
+                  <Activity className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/50">DOGE to win</span>
+                  <span className="text-blue-400 font-bold">High volume</span>
+                </div>
+              </Link>
+
+              {/* Prediction Card 3 */}
+              <Link
+                to="/battles"
+                className="block bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20 rounded-lg p-3 hover:border-purple-500/40 transition-all group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-white">
+                      BONK vs FLOKI
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] font-bold rounded">
+                      72% Win
+                    </span>
+                  </div>
+                  <Target className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/50">BONK to win</span>
+                  <span className="text-purple-400 font-bold">
+                    Rising trend
+                  </span>
+                </div>
+              </Link>
             </div>
           </div>
 
