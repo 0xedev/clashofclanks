@@ -15,8 +15,10 @@ export function FrameContainer({ children }: FrameContainerProps) {
         // This allows the app to send push notifications to the user
         const result = await sdk.actions.addMiniApp();
 
-        if (result.added) {
+        if (result.notificationDetails) {
           console.log("Mini app added successfully, notifications enabled");
+        } else {
+          console.log("Mini app added successfully");
         }
       } catch (error) {
         console.error("Failed to initialize Mini App SDK:", error);
