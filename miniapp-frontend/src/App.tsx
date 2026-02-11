@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 // import { Header } from "./components/Header";
 import { BottomNav } from "./components/BottomNav";
+import { FrameContainer } from "./components/FrameContainer";
 import { AdminPage } from "./pages/AdminPage";
 import { Home } from "./pages/Home";
 import { Battles } from "./pages/Battles";
@@ -54,7 +55,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <FrameContainer>
+        <AppContent />
+      </FrameContainer>
     </BrowserRouter>
   );
 }
